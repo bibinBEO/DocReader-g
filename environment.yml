@@ -1,0 +1,49 @@
+name: docreader
+channels:
+  - pytorch
+  - nvidia/label/cuda-12.1.1
+  - conda-forge
+  - defaults
+dependencies:
+  - python=3.10
+  - pip
+  - pytorch
+  - torchvision
+  - torchaudio
+  - pytorch-cuda=12.1
+  - cudnn
+  - opencv
+  - poppler
+  - pip:
+    - fastapi
+    - uvicorn
+    - pydantic
+    - sqlmodel
+    - alembic
+    - psycopg2-binary
+    - asyncpg # Added for async PostgreSQL driver
+    - celery
+    - redis
+    - python-multipart
+    - pdf2image
+    - Pillow
+    - transformers
+    - accelerate
+    - bitsandbytes
+    - scikit-learn
+    - matplotlib
+    - seaborn
+    - jupyter
+    - notebook
+    - structlog
+    - opentelemetry-sdk
+    - opentelemetry-exporter-otlp-proto-grpc
+    - opentelemetry-instrumentation-fastapi
+    - opentelemetry-instrumentation-celery
+    - prometheus_client
+    - locust
+    - ruff
+    - black
+    - mypy
+    - pytest
+    - pytest-cov

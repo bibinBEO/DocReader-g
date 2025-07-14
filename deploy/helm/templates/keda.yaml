@@ -1,0 +1,28 @@
+
+{{- if .Values.keda.enabled -}}
+apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata:
+  name: {{ include "docreader.fullname" . }}-celery-worker
+  labels:
+    {{- include "docreader.labels" . | nindent 4 }}
+    app.kubernetes.io/component: celery-worker
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: {{ include "docreader.fullname" . }}-celery-worker
+  minReplicaCount: {{ .Values.keda.minReplicas }}
+  maxReplicaCount: {{ .Values.keda.maxReplicas }}
+  pollingInterval: {{ .Values.keda.pollingInterval }}
+  cooldownPeriod: {{ .Values.keda.cooldownPeriod }}
+  triggers:
+    - type: redis
+      metadata:
+        address: {{ .Values.keda.redis.address }}
+        queueName: {{ .Values.keda.queueName }}
+        queueLength: "{{ .Values.keda.queueLength }}"
+        {{- if .Values.keda.redis.password }}
+        passwordFromSecret: {{ include "docreader.fullname" . }}-redis-secret
+        {{- end }}
+{{- end }}

@@ -1,0 +1,30 @@
+
+<!-- CVAT XML Configuration for Document Annotation -->
+<annotations>
+  <version>1.1</version>
+  <meta>
+    <task>
+      <id>1</id>
+      <name>Document Extraction</name>
+      <labels>
+        <label><name>vendor_name</name><attributes><attribute><name>text</name><input_type>text</input_type><default_value></default_value></attribute></attributes></label>
+        <label><name>invoice_number</name><attributes><attribute><name>text</name><input_type>text</input_type><default_value></default_value></attribute></attributes></label>
+        <label><name>invoice_date</name><attributes><attribute><name>text</name><input_type>text</input_type><default_value></default_value></attribute></attributes></label>
+        <label><name>due_date</name><attributes><attribute><name>text</name><input_type>text</input_type><default_value></default_value></attribute></attributes></label>
+        <label><name>subtotal</name><attributes><attribute><name>text</name><input_type>text</input_type><default_value></default_value></attribute></attributes></label>
+        <label><name>tax_total</name><attributes><attribute><name>text</name><input_type>text</input_type><default_value></default_value></attribute></attributes></label>
+        <label><name>grand_total</name><attributes><attribute><name>text</name><input_type>text</input_type><default_value></default_value></attribute></attributes></label>
+        <label><name>currency</name><attributes><attribute><name>text</name><input_type>text</input_type><default_value></default_value></attribute></attributes></label>
+        <label><name>line_item</name><attributes>
+            <attribute><name>description</name><input_type>text</input_type><default_value></default_value></attribute>
+            <attribute><name>qty</name><input_type>text</input_type><default_value></default_value></attribute>
+            <attribute><name>unit_price</name><input_type>text</input_type><default_value></default_value></attribute>
+            <attribute><name>total</name><input_type>text</input_type><default_value></default_value></attribute>
+        </attributes></label>
+        <label><name>HS_code</name><attributes><attribute><name>text</name><input_type>text</input_type><default_value></default_value></attribute></attributes></label>
+        <label><name>country_of_origin</name><attributes><attribute><name>text</name><input_type>text</input_type><default_value></default_value></attribute></attributes></label>
+        <label><name>shipment_weight</name><attributes><attribute><name>text</name><input_type>text</input_type><default_value></default_value></attribute></attributes></label>
+      </labels>
+    </task>
+  </meta>
+</annotations>

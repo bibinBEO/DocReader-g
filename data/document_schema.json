@@ -1,0 +1,90 @@
+
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "DocumentExtractionSchema",
+  "description": "Schema for extracted fields from invoices, waybills, and customs documents.",
+  "type": "object",
+  "properties": {
+    "vendor_name": {
+      "type": "string",
+      "description": "Name of the vendor or supplier."
+    },
+    "invoice_number": {
+      "type": "string",
+      "description": "Unique identifier for the invoice."
+    },
+    "invoice_date": {
+      "type": "string",
+      "format": "date",
+      "description": "Date the invoice was issued (YYYY-MM-DD)."
+    },
+    "due_date": {
+      "type": "string",
+      "format": "date",
+      "description": "Date payment is due (YYYY-MM-DD)."
+    },
+    "subtotal": {
+      "type": "number",
+      "description": "Subtotal amount before taxes and discounts."
+    },
+    "tax_total": {
+      "type": "number",
+      "description": "Total tax amount."
+    },
+    "grand_total": {
+      "type": "number",
+      "description": "Total amount including taxes and other charges."
+    },
+    "currency": {
+      "type": "string",
+      "description": "Currency of the amounts (e.g., USD, EUR, GBP)."
+    },
+    "line_items": {
+      "type": "array",
+      "description": "List of individual line items.",
+      "items": {
+        "type": "object",
+        "properties": {
+          "description": {
+            "type": "string",
+            "description": "Description of the item."
+          },
+          "qty": {
+            "type": "number",
+            "description": "Quantity of the item."
+          },
+          "unit_price": {
+            "type": "number",
+            "description": "Price per unit of the item."
+          },
+          "total": {
+            "type": "number",
+            "description": "Total price for the line item (qty * unit_price)."
+          }
+        },
+        "required": ["description", "qty", "unit_price", "total"]
+      }
+    },
+    "HS_code": {
+      "type": "string",
+      "description": "Harmonized System code for customs."
+    },
+    "country_of_origin": {
+      "type": "string",
+      "description": "Country where the goods originated."
+    },
+    "shipment_weight": {
+      "type": "string",
+      "description": "Weight of the shipment, including units (e.g., '10 kg', '500 lbs')."
+    }
+  },
+  "required": [
+    "vendor_name",
+    "invoice_number",
+    "invoice_date",
+    "subtotal",
+    "tax_total",
+    "grand_total",
+    "currency"
+  ]
+}

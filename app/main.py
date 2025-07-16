@@ -115,11 +115,12 @@ async def get_task_status(task_id: str, session: Session = Depends(get_session),
         }
         DOC_STATUS_COUNTER.labels(status='SUCCESS').inc() # Increment success counter
     elif task.state == 'FAILURE':
+        # task.info is the exception that was raised
         response = {
             'status': task.state,
-            'message': task.info.get('status', 'Task failed'),
+            'message': 'Task failed',
             'progress': 100,
-            'error': str(task.info.get('error', 'Unknown error'))
+            'error': str(task.info)  # Directly convert the exception to a string
         }
         DOC_STATUS_COUNTER.labels(status='FAILED').inc() # Increment failed counter
     else:

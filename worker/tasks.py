@@ -11,6 +11,7 @@ from PIL import Image
 from sqlmodel import Session, select
 from opentelemetry import trace
 
+from pdf2image import convert_from_path
 from pipeline.prepare import convert_pdf_to_images, deskew_image, ocr_image
 from pipeline.models.donut import DonutModel # Import DonutModel
 from pipeline.models.layoutlm_invoice import LayoutLMv3Invoice
@@ -48,16 +49,22 @@ celery_app.conf.update(
 # Configure OpenTelemetry for Celery
 configure_opentelemetry(celery_app=celery_app)
 
-# Initialize models (these will be loaded once per worker process)
-# Use DonutModel instead of NanonetsOCR
-donut_model_client = DonutModel(model_name_or_path=os.getenv("DONUT_MODEL_PATH", "naver-clova-ix/donut-base-finetuned-docvqa"))
-layoutlm_client = LayoutLMv3Invoice(model_name_or_path=os.getenv("LAYOUTLMV3_MODEL_PATH"))
+# Initialize models to None. They will be loaded once per worker process when the first task is executed.
+donut_model_client = None
+layoutlm_client = None
 
 @celery_app.task(bind=True)
 def process_document_task(self, file_path: str, document_id: int) -> Dict[str, Any]:
     """
     Celery task to process a document, extract fields, and store results.
     """
+    global donut_model_client, layoutlm_client
+
+    # Lazily initialize models on the first task execution per worker
+    if donut_model_client is None:
+        donut_model_client = DonutModel(model_name_or_path=os.getenv("DONUT_MODEL_PATH", "naver-clova-ix/donut-base-finetuned-docvqa"))
+    if layoutlm_client is None:
+        layoutlm_client = LayoutLMv3Invoice(model_name_or_path=os.getenv("LAYOUTLMV3_MODEL_PATH"))
     start_time = time.time()
     session = next(get_session()) # Get a database session
     tracer = trace.get_tracer(__name__)
@@ -100,11 +107,9 @@ def process_document_task(self, file_path: str, document_id: int) -> Dict[str, A
                     self.update_state(state='PROGRESS', meta={'current': 50 + i*10, 'total': 100, 'status': f'Running model inference on page {i+1}'})
                     
                     # Use Donut for end-to-end extraction
-                    extracted_fields = donut_model_client.predict_fp16(img) # Or predict_int8
+                    extracted_fields = donut_model_client.predict(img)
 
-                    # If you still need OCR results for LayoutLMv3, you would call ocr_image here
-                    # ocr_results = ocr_image(img)
-                    # extracted_fields_layoutlm = layoutlm_client.predict_fp16(img) # Pass image and OCR results
+                    
 
                     all_extracted_data.append(extracted_fields) # For now, just append raw extracted fields
 

@@ -20,7 +20,10 @@ class LayoutLMv3Invoice:
         print(f"Using device: {self.device}")
 
         self.processor = AutoProcessor.from_pretrained(model_name_or_path, apply_ocr=False)
-        self.model = AutoModelForTokenClassification.from_pretrained(model_name_or_path)
+        self.model = AutoModelForTokenClassification.from_pretrained(
+            model_name_or_path,
+            torch_dtype=torch.float16 # Load in FP16
+        )
         self.model.to(self.device)
         self.model.eval() # Set model to evaluation mode
 
@@ -55,12 +58,11 @@ class LayoutLMv3Invoice:
         encoding = self.processor(image, dummy_words, boxes=dummy_boxes, return_tensors="pt")
         return encoding
 
-    def _predict(self, image: Image.Image, precision: str) -> List[Dict[str, Any]]:
+    def predict(self, image: Image.Image) -> List[Dict[str, Any]]:
         """
-        Internal prediction method with precision handling.
+        Performs inference using LayoutLMv3 with FP16 precision.
         Args:
             image: PIL Image object of the document.
-            precision: 'fp16' or 'int8'.
         Returns:
             A list of dictionaries, each representing an extracted field.
         """
@@ -68,21 +70,10 @@ class LayoutLMv3Invoice:
 
         input_ids = encoding["input_ids"].to(self.device)
         attention_mask = encoding["attention_mask"].to(self.device)
-        bbox = encoding["bbox"].to(self.device)
+        bbox = encoding["bbox"].to(self.device, dtype=torch.float16)
 
         with torch.no_grad():
-            if precision == "fp16":
-                with torch.cuda.amp.autocast():
-                    outputs = self.model(input_ids=input_ids, attention_mask=attention_mask, bbox=bbox)
-            elif precision == "int8":
-                # For 8-bit, you'd typically quantize the model once during init
-                # and then use the quantized model here.
-                # transformers library supports `load_in_8bit=True` during from_pretrained.
-                # For this example, we'll just run regular inference if not explicitly quantized.
-                # A proper 8-bit path would involve `bitsandbytes` integration.
-                outputs = self.model(input_ids=input_ids, attention_mask=attention_mask, bbox=bbox)
-            else:
-                raise ValueError(f"Unsupported precision: {precision}")
+            outputs = self.model(input_ids=input_ids, attention_mask=attention_mask, bbox=bbox)
 
         predictions = outputs.logits.argmax(dim=-1).squeeze().tolist()
         tokens = self.processor.tokenizer.convert_ids_to_tokens(input_ids.squeeze().tolist())
@@ -160,34 +151,4 @@ class LayoutLMv3Invoice:
         x_max = max(b[2] for b in bboxes)
         y_max = max(b[3] for b in bboxes)
         return [x_min, y_min, x_max, y_max]
-
-    def predict_fp16(self, image: Image.Image) -> List[Dict[str, Any]]:
-        """
-        Performs inference using LayoutLMv3 with FP16 precision.
-        Args:
-            image: PIL Image object of the document.
-        Returns:
-            Extracted data.
-        """
-        return self._predict(image, "fp16")
-
-    def predict_int8(self, image: Image.Image) -> List[Dict[str, Any]]:
-        """
-        Performs inference using LayoutLMv3 with 8-bit quantization.
-        Note: For true 8-bit inference, the model should ideally be loaded
-        with `load_in_8bit=True` during initialization, which requires `bitsandbytes`.
-        This method assumes the model is already quantized or handles it internally.
-        Args:
-            image: PIL Image object of the document.
-        Returns:
-            Extracted data.
-        """
-        # A more robust 8-bit path would involve:
-        # from transformers import BitsAndBytesConfig
-        # quantization_config = BitsAndBytesConfig(load_in_8bit=True)
-        # self.model = AutoModelForTokenClassification.from_pretrained(
-        #     model_name_or_path, quantization_config=quantization_config
-        # )
-        # For now, it will run standard inference if not explicitly quantized.
-        return self._predict(image, "int8")
 

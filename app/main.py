@@ -1,4 +1,3 @@
-
 from fastapi import FastAPI, File, UploadFile, HTTPException, Depends, status
 from fastapi.responses import JSONResponse, PlainTextResponse
 from typing import Dict, Any
@@ -33,8 +32,6 @@ UPLOAD_DIR = Path("./uploads")
 UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
 
 # Placeholder for JWT authentication (Phase 5)
-from fastapi import Request
-
 async def verify_jwt_token(request: Request):
     token = request.headers.get("Authorization")
     if not token or not token.startswith("Bearer "):
@@ -140,7 +137,7 @@ async def get_document_result(document_id: int, session: Session = Depends(get_s
 
     # Eagerly load extractions and model_version
     statement = select(Document).where(Document.id == document_id).options(
-        selectinload(Document.extractions).selectinload(Extraction.model_version)
+        selectinload(Document.extractions).selectinload(Extraction.model_version_rel) # Corrected relationship name
     )
     document = session.exec(statement).first()
 
@@ -156,10 +153,10 @@ async def get_document_result(document_id: int, session: Session = Depends(get_s
         "status": document.status,
         "extracted_data": latest_extraction.extracted_data,
         "model_version": {
-            "name": latest_extraction.model_version.model_name,
-            "version": latest_extraction.model_version.version,
-            "metrics": latest_extraction.model_version.metrics
-        } if latest_extraction.model_version else None,
+            "name": latest_extraction.model_version_rel.model_name, # Corrected relationship name
+            "version": latest_extraction.model_version_rel.version, # Corrected relationship name
+            "metrics": latest_extraction.model_version_rel.metrics # Corrected relationship name
+        } if latest_extraction.model_version_rel else None,
         "extraction_time": latest_extraction.extraction_time.isoformat()
     })
 
@@ -169,4 +166,3 @@ async def metrics():
     Exposes Prometheus metrics.
     """
     return PlainTextResponse(generate_latest().decode('utf-8'))
-

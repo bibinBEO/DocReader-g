@@ -20,73 +20,43 @@ class DonutModel:
         print(f"Using device: {self.device}")
 
         self.processor = AutoProcessor.from_pretrained(model_name_or_path)
-        self.model = AutoModelForVision2Seq.from_pretrained(model_name_or_path)
+        self.model = AutoModelForVision2Seq.from_pretrained(
+            model_name_or_path,
+            torch_dtype=torch.float16 # Load in FP16
+        )
         self.model.to(self.device)
         self.model.eval() # Set model to evaluation mode
 
-    def _predict(self, image: Image.Image, precision: str) -> Dict[str, Any]:
+    def predict(self, image: Image.Image) -> Dict[str, Any]:
         """
-        Internal prediction method with precision handling.
+        Performs inference using Donut with FP16 precision.
         Args:
             image: PIL Image object of the document.
-            precision: 'fp16' or 'int8'.
         Returns:
             A dictionary containing the extracted data.
         """
         pixel_values = self.processor(image, return_tensors="pt").pixel_values
-        pixel_values = pixel_values.to(self.device)
+        pixel_values = pixel_values.to(self.device, dtype=torch.float16)
 
         with torch.no_grad():
-            if precision == "fp16":
-                with torch.cuda.amp.autocast():
-                    outputs = self.model.generate(pixel_values)
-            elif precision == "int8":
-                # For 8-bit, you'd typically quantize the model once during init
-                # and then use the quantized model here.
-                # transformers library supports `load_in_8bit=True` during from_pretrained.
-                # For this example, we'll just run regular inference if not explicitly quantized.
-                # A proper 8-bit path would involve `bitsandbytes` integration.
-                outputs = self.model.generate(pixel_values)
-            else:
-                raise ValueError(f"Unsupported precision: {precision}")
+            outputs = self.model.generate(pixel_values)
 
         # Decode the generated tokens
         decoded_output = self.processor.batch_decode(outputs, skip_special_tokens=True)[0]
 
         # Donut output is typically a JSON string. Parse it.
         try:
-            extracted_data = json.loads(decoded_output)
+            # The output can sometimes be a list of JSON objects, so we need to handle that
+            # by finding the start and end of the JSON string.
+            json_start = decoded_output.find('{')
+            json_end = decoded_output.rfind('}') + 1
+            if json_start != -1 and json_end != 0:
+                json_str = decoded_output[json_start:json_end]
+                extracted_data = json.loads(json_str)
+            else:
+                extracted_data = {"raw_output": decoded_output, "error": "No JSON object found in Donut output"}
+
         except json.JSONDecodeError:
             extracted_data = {"raw_output": decoded_output, "error": "Failed to parse JSON from Donut output"}
 
         return extracted_data
-
-    def predict_fp16(self, image: Image.Image) -> Dict[str, Any]:
-        """
-        Performs inference using Donut with FP16 precision.
-        Args:
-            image: PIL Image object of the document.
-        Returns:
-            Extracted data.
-        """
-        return self._predict(image, "fp16")
-
-    def predict_int8(self, image: Image.Image) -> Dict[str, Any]:
-        """
-        Performs inference using Donut with 8-bit quantization.
-        Note: For true 8-bit inference, the model should ideally be loaded
-        with `load_in_8bit=True` during initialization, which requires `bitsandbytes`.
-        This method assumes the model is already quantized or handles it internally.
-        Args:
-            image: PIL Image object of the document.
-        Returns:
-            Extracted data.
-        """
-        # A more robust 8-bit path would involve:
-        # from transformers import BitsAndBytesConfig
-        # quantization_config = BitsAndBytesConfig(load_in_8bit=True)
-        # self.model = AutoModelForVision2Seq.from_pretrained(
-        #     model_name_or_path, quantization_config=quantization_config
-        # )
-        # For now, it will run standard inference if not explicitly quantized.
-        return self._predict(image, "int8")

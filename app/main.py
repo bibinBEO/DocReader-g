@@ -1,5 +1,6 @@
 from fastapi import FastAPI, File, UploadFile, HTTPException, Depends, status, Request
-from fastapi.responses import JSONResponse, PlainTextResponse
+from fastapi.responses import JSONResponse, PlainTextResponse, FileResponse
+from fastapi.staticfiles import StaticFiles
 from typing import Dict, Any
 from pathlib import Path
 import uuid
@@ -24,6 +25,9 @@ app = FastAPI(
     description="API for ingesting and extracting data from documents.",
     version="0.1.0",
 )
+
+# Mount the static directory to serve the frontend
+app.mount("/static", StaticFiles(directory="app/static"), name="static")
 
 # Configure OpenTelemetry for FastAPI
 configure_opentelemetry(app=app)
@@ -159,6 +163,10 @@ async def get_document_result(document_id: int, session: Session = Depends(get_s
         } if latest_extraction.model_version_rel else None,
         "extraction_time": latest_extraction.extraction_time.isoformat()
     })
+
+@app.get("/", include_in_schema=False)
+async def root():
+    return FileResponse("app/static/index.html")
 
 @app.get("/metrics", summary="Prometheus metrics endpoint")
 async def metrics():

@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DocReader</title>
+    <style>
+        body { font-family: sans-serif; margin: 2em; }
+        .container { max-width: 800px; margin: 0 auto; }
+        .upload-area { border: 2px dashed #ccc; padding: 2em; text-align: center; margin-bottom: 1em; }
+        .results { margin-top: 2em; }
+        .error { color: red; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>DocReader</h1>
+        <div class="upload-area">
+            <input type="file" id="file-input">
+            <p>Drag and drop a file here or click to select a file.</p>
+        </div>
+        <button id="upload-btn">Upload</button>
+        <div class="results">
+            <h2>Results</h2>
+            <pre id="results-output"></pre>
+            <p class="error" id="error-output"></p>
+        </div>
+    </div>
+    <script>
+        const fileInput = document.getElementById('file-input');
+        const uploadBtn = document.getElementById('upload-btn');
+        const resultsOutput = document.getElementById('results-output');
+        const errorOutput = document.getElementById('error-output');
+
+        uploadBtn.addEventListener('click', async () => {
+            const file = fileInput.files[0];
+            if (!file) {
+                errorOutput.textContent = 'Please select a file to upload.';
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('file', file);
+
+            try {
+                const response = await fetch('/upload', {
+                    method: 'POST',
+                    body: formData,
+                    headers: {
+                        'Authorization': 'Bearer dummy-token'
+                    }
+                });
+
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+
+                const data = await response.json();
+                resultsOutput.textContent = JSON.stringify(data, null, 2);
+                errorOutput.textContent = '';
+
+                // Poll for results
+                if (data.task_id) {
+                    pollForResult(data.task_id);
+                }
+
+            } catch (error) {
+                errorOutput.textContent = `Error: ${error.message}`;
+            }
+        });
+
+        async function pollForResult(taskId) {
+            const interval = setInterval(async () => {
+                try {
+                    const response = await fetch(`/status/${taskId}`, {
+                        headers: {
+                            'Authorization': 'Bearer dummy-token'
+                        }
+                    });
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+                    const data = await response.json();
+                    resultsOutput.textContent = JSON.stringify(data, null, 2);
+
+                    if (data.status === 'SUCCESS' || data.status === 'FAILURE') {
+                        clearInterval(interval);
+                    }
+                } catch (error) {
+                    errorOutput.textContent = `Error polling for results: ${error.message}`;
+                    clearInterval(interval);
+                }
+            }, 2000);
+        }
+    </script>
+</body>
+</html>
